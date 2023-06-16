@@ -17,6 +17,7 @@ from pycocotools.coco import COCO
 from matplotlib.collections import PatchCollection
 import random
 import pylab
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
@@ -72,6 +73,7 @@ class WASTE(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         'Generates one sample of data'
 
+
         # Obtain Exif orientation tag code
         for orientation in ExifTags.TAGS.keys():
             if ExifTags.TAGS[orientation] == 'Orientation':
@@ -86,6 +88,7 @@ class WASTE(torch.utils.data.Dataset):
         img_path = self.imgs[img_id]['file_name']
 
         I = Image.open(self.path + '/' + img_path)
+
         # Load and process image metadata
         if I._getexif():
             exif = dict(I._getexif().items())
@@ -158,6 +161,3 @@ if __name__ == "__main__":
         plt.text(box[0]+box[2],box[1],str(label),color='r')
     fig.savefig('test.png', bbox_inches='tight', pad_inches=0)
         
-
-
-
