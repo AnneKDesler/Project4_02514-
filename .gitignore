@@ -1,0 +1,9 @@
+/data/
+*.egg-info
+wandb/
+/src/__pycache__/
+lightning_logs/
+*.pyc
+*.cpython-310.pyc
+
+models/
