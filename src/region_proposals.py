@@ -37,6 +37,10 @@ if __name__ == "__main__":
     for i, rp in enumerate(rps[:10]):
         cv2.imwrite(f"region_proposals{i}.jpg", rp)
 
+    #for each proposal in each image calc IoU with each GT bbox if above 0.7 assign label, 
+    #if more than one label, assign the one with the highest IoU, 
+    # if no above 0.3 assign background. discard all others.
+
 
 
 
