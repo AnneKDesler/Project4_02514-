@@ -1,15 +1,12 @@
 import pytorch_lightning as pl
 import wandb
 from pytorch_lightning.callbacks import ModelCheckpoint
-from src.load_data import get_dataloaders_DRIVE
-from src.load_data import get_dataloaders_PH2
+from src.load_data import get_dataloaders_WASTE
 from src.model import Model
-from src.model import DilatedNet
 
-
-def train_UNet(config=None, checkpoint_callbacks=None):
+def train(config=None, checkpoint_callbacks=None):
     with wandb.init(config=config, 
-                    project="project2_02514",
+                    project="project4_02514",
                     entity="chrillebon",):
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
@@ -34,10 +31,9 @@ def train_UNet(config=None, checkpoint_callbacks=None):
         )
 
         wandb.watch(model, log=None, log_freq=1)
-        logger = pl.loggers.WandbLogger(project="project2_02514", entity="chrillebon")
+        logger = pl.loggers.WandbLogger(project="project4_02514", entity="chrillebon")
 
-        #trainloader, valloader,_ = get_dataloaders_DRIVE(batch_size=batch_size, data_path="data/DRIVE/training")
-        trainloader, valloader,_ = get_dataloaders_PH2(batch_size=batch_size, data_path="data/PH2_Dataset_images")
+        trainloader, valloader,_ = get_dataloaders_WASTE(batch_size=batch_size)#, data_path="data/PH2_Dataset_images")
 
         # make sure no models are saved if no checkpoints are given
         if checkpoint_callbacks is None:
@@ -66,8 +62,8 @@ def train_UNet(config=None, checkpoint_callbacks=None):
 
 
 if __name__ == "__main__":
-    checkpoint_callback = ModelCheckpoint(dirpath="models/UNet_PH2", filename="best_UNet")
-    train_UNet(
-        config="src/config/default_params_UNet_PH2.yaml",
+    checkpoint_callback = ModelCheckpoint(dirpath="models", filename="best")
+    train(
+        config="src/config/default_params.yaml",
         checkpoint_callbacks=[checkpoint_callback],
     )

@@ -7,6 +7,7 @@ import numpy as np
 import wandb
 from sklearn.metrics import confusion_matrix
 from src.loss import binary_focal_loss_with_logits
+from torchvision.models import resnet50, ResNet50_Weights
 
 def bce_loss(pred, target):	
     return torch.mean(F.binary_cross_entropy_with_logits(pred, target))
@@ -17,84 +18,29 @@ def focal_loss(pred, target):
 class Model(pl.LightningModule):
     def __init__(
         self,
-        num_classes: int = 1,
+        num_classes: int = 29,
         lr: Optional[float] = 1e-3,
         weight_decay: Optional[float] = 0,
         batch_size: Optional[int] = 1,
-        batch_normalization: Optional[bool] = False,
         optimizer: Optional[str] = None,
-        target_mask_supplied: Optional[bool]=False,
         loss = None,
         *args,
         **kwargs
     ) -> None:
         super(Model, self).__init__(*args, **kwargs)
-        
-        self.target_mask_supplied = target_mask_supplied
+        weights = ResNet50_Weights.DEFAULT
+        original_model = resnet50(weights=weights)       
+        # Everything except the last linear layer
+        self.features = nn.Sequential(*list(original_model.children())[:-1])
+        self.classifier = nn.Sequential(
+            nn.Linear(512, num_classes)
+        )
+        self.modelName = 'LightCNN-29'
+        # Freeze those weights
+        for p in self.features.parameters():
+            p.requires_grad = False
 
-        # encoder (downsampling)
-        self.enc_conv0 = nn.Sequential(nn.Conv2d(3, 64, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(64, 64, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        
-        self.downsample0 = nn.Conv2d(64, 64, 3, stride=2, padding=1)
-
-        self.enc_conv1 = nn.Sequential(nn.Conv2d(64, 128, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(128, 128, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        self.downsample1 = nn.Conv2d(128, 128, 3, stride=2, padding=1)
-        
-        self.enc_conv2 = nn.Sequential(nn.Conv2d(128, 256, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(256, 256, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        
-        self.downsample2 = nn.Conv2d(256, 256, 3, stride=2, padding=1)
-        
-        self.enc_conv3 = nn.Sequential(nn.Conv2d(256, 512, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(512, 512, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        
-        self.downsample3 = nn.Conv2d(512, 512, 3, stride=2, padding=1)
-
-        # bottleneck
-        self.bottleneck_conv = nn.Sequential(nn.Conv2d(512, 1024, 3, stride=1, padding=1),
-                                             nn.ReLU(),
-                                             nn.Conv2d(1024, 1024, 3, stride=1, padding=1),
-                                             nn.ReLU())
-
-        # decoder (upsampling)
-        self.upsample0 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
-        
-        self.dec_conv0 = nn.Sequential(nn.Conv2d(1024, 512, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(512, 512, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        
-        self.upsample1 = nn.ConvTranspose2d(512, 256, 2, stride=2)
-        
-        self.dec_conv1 = nn.Sequential(nn.Conv2d(512, 256, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(256, 256, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        
-        self.upsample2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
-        
-        self.dec_conv2 = nn.Sequential(nn.Conv2d(256, 128, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(128, 128, 3, stride=1, padding=1),
-                                       nn.ReLU())
-        
-        self.upsample3 = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        
-        self.dec_conv3 = nn.Sequential(nn.Conv2d(128, 64, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(64, 64, 3, stride=1, padding=1),
-                                       nn.ReLU(),
-                                       nn.Conv2d(64, num_classes, 1, stride=1))
+            
         self.lr = lr
         self.batch_size = batch_size
         if loss == "focal":
@@ -114,43 +60,11 @@ class Model(pl.LightningModule):
             self.optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
 
     def forward(self, x: List[str]) -> List[str]:
-        """
-        https://huggingface.co/docs/transformers/model_doc/t5#inference
-        """
+        f = self.features(x)        
+        f = f.view(f.size(0), -1)
+        y = self.classifier(f)
+        return y
 
-        # encoder
-        e0 = self.enc_conv0(x)
-        e0_down = self.downsample0(e0)
-        e1 = self.enc_conv1(e0_down)
-        e1_down = self.downsample1(e1)
-        e2 = self.enc_conv2(e1_down)
-        e2_down = self.downsample2(e2)
-        e3 = self.enc_conv3(e2_down)
-        e3_down = self.downsample3(e3)
-
-        # bottleneck
-        b = self.bottleneck_conv(e3_down)
-        # decoder
-        b = self.upsample0(b)
-        b = torch.cat((b, e3), dim=1)  # skip-connection
-        d0 = self.dec_conv0(b)
-
-        d0 = self.upsample1(d0)
-
-        d0 = torch.cat((d0, e2), dim=1)  # skip-connection
-        d1 = self.dec_conv1(d0)
-
-        d1 = self.upsample2(d1)
-
-        d1 = torch.cat((d1, e1), dim=1)  # skip-connection
-        d2 = self.dec_conv2(d1)
-
-        d2 = self.upsample3(d2)
-
-        d2 = torch.cat((d2, e0), dim=1)  # skip-connection
-        d3 = self.dec_conv3(d2)  # no activation
-        
-        return d3
 
     def _inference_training(
         self, batch, batch_idx: Optional[int] = None

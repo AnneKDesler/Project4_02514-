@@ -2,21 +2,13 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 from torchvision import transforms
-import os
-import glob
 import numpy as np
 import PIL.Image as Image
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-import cv2
 import json
-import pandas as pd
-import seaborn as sns; sns.set()
 from PIL import Image, ExifTags
 from pycocotools.coco import COCO
-from matplotlib.collections import PatchCollection
-import random
-import pylab
+
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
@@ -72,6 +64,7 @@ class WASTE(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         'Generates one sample of data'
 
+
         # Obtain Exif orientation tag code
         for orientation in ExifTags.TAGS.keys():
             if ExifTags.TAGS[orientation] == 'Orientation':
@@ -86,6 +79,7 @@ class WASTE(torch.utils.data.Dataset):
         img_path = self.imgs[img_id]['file_name']
 
         I = Image.open(self.path + '/' + img_path)
+
         # Load and process image metadata
         if I._getexif():
             exif = dict(I._getexif().items())
@@ -140,11 +134,11 @@ def get_dataloaders_WASTE(batch_size, num_workers=8, seed=42, data_path='/dtu/da
 
 if __name__ == "__main__":
     path = "/u/data/s194333/DLCV/Project4_02514-/data"
-    dataset = WASTE(data_path=path)
+    dataset = WASTE()#data_path=path)
     cats = dataset.super_cat_ids
 
 
-    train_loader, val_loader, test_loader = get_dataloaders_WASTE(batch_size=1, num_workers=0, seed=42, data_path=path)
+    train_loader, val_loader, test_loader = get_dataloaders_WASTE(batch_size=1, num_workers=0, seed=42)#, data_path=path)
     img, target = next(iter(test_loader))
 
     fig,ax = plt.subplots(1)
@@ -158,6 +152,3 @@ if __name__ == "__main__":
         plt.text(box[0]+box[2],box[1],str(label),color='r')
     fig.savefig('test.png', bbox_inches='tight', pad_inches=0)
         
-
-
-
