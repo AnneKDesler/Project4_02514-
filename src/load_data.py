@@ -7,11 +7,8 @@ import PIL.Image as Image
 import json
 from PIL import Image, ExifTags
 from pycocotools.coco import COCO
-
-
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-
 import data_augment as dataAug
 
 class WASTE(torch.utils.data.Dataset):
@@ -47,24 +44,16 @@ class WASTE(torch.utils.data.Dataset):
                 nr_super_cats += 1
 
         self.super_cat_ids = super_cat_ids
-
-
-
         self.cat_ids_2_supercat_ids = {}
         for cat in categories:
             self.cat_ids_2_supercat_ids[cat['id']] = super_cat_ids[cat['supercategory']]
-
-        
     
     def __len__(self):
         'Returns the total number of samples'
         return len(self.img_ids)
-    
 
     def __getitem__(self, idx):
         'Generates one sample of data'
-
-
         # Obtain Exif orientation tag code
         for orientation in ExifTags.TAGS.keys():
             if ExifTags.TAGS[orientation] == 'Orientation':
@@ -118,8 +107,6 @@ class WASTE(torch.utils.data.Dataset):
         return X, Y
     
 def get_dataloaders_WASTE(batch_size, num_workers=8, seed=42, data_path='/dtu/datasets1/02514/data_wastedetection'):
-    
-    
     dataset = WASTE(data_path=data_path)
 
     generator1 = torch.Generator().manual_seed(seed)
@@ -137,7 +124,6 @@ if __name__ == "__main__":
     dataset = WASTE()#data_path=path)
     cats = dataset.super_cat_ids
 
-
     train_loader, val_loader, test_loader = get_dataloaders_WASTE(batch_size=1, num_workers=0, seed=42)#, data_path=path)
     img, target = next(iter(test_loader))
 
@@ -151,4 +137,3 @@ if __name__ == "__main__":
         label = list(cats.keys())[list(cats.values()).index(box[4].item())]
         plt.text(box[0]+box[2],box[1],str(label),color='r')
     fig.savefig('test.png', bbox_inches='tight', pad_inches=0)
-        

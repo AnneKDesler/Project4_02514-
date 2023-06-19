@@ -7,7 +7,7 @@ weight_decay:
 epochs:
   value: 50
 batch_size:
-  value: 4
+  value: 64
 batch_normalization:
   value: True
 optimizer:
