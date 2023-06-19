@@ -11,35 +11,46 @@ def eval(model_src):
     if not os.path.isfile(model_src):
         model_src = os.path.join("models", model_src)
 
-    try:
-        model = DilatedNet.load_from_checkpoint(checkpoint_path=model_src, 
-                                           #target_mask_supplied=True,
-                                            loss="focal"
-        )
-    except:
-        model = DilatedNet.load_from_checkpoint(
-            checkpoint_path=model_src, 
-            #target_mask_supplied=True,
-            loss="focal"
-        )
+    model = Model.load_from_checkpoint(checkpoint_path=model_src)
 
     #trainloader, valloader, testloader = get_dataloaders_DRIVE(batch_size=8, data_path="data/DRIVE/training")
-    trainloader, valloader, testloader = get_dataloaders_PH2(batch_size=8, data_path="data/PH2_Dataset_images")
+    _, _, testloader = get_dataloaders_proposals(batch_size=1, data_path="data", proposal_path="region_proposals")
 
+    model.to("cuda")
+
+    predictions = dict()
+
+    for img, target, prop, rect in testloader:
+        output = model(prop.to("cuda"))
+        output = torch.softmax(output)
+        output = output.detach().cpu().numpy()
+        output = output.squeeze()
+        pred = out.argmax(axis=0)
+        img_id = rect[5]
+        if img_id not in predictions:
+            predictions[str(img_id)] = dict()
+            predictions[str(img_id)]["pred"] = [rect.append(pred)]
+        else:
+            predictions[str(img_id)]["pred"].append(rect.append(pred))
+
+
+
+
+
+        break
 
     if torch.cuda.is_available():
         trainer = pl.Trainer(
             default_root_dir="",
             accelerator="gpu",
-            devices=[0],
-            #strategy="ddp",
+            devices=[0]
         )
     else:
         trainer = pl.Trainer(default_root_dir="")
     
-    #results = trainer.test(model=model, dataloaders=trainloader, verbose=True)
+    results = trainer.test(model=model, dataloaders=trainloader, verbose=True)
 
-    #print(results)
+    print(results)
 
     results = trainer.test(model=model, dataloaders=valloader, verbose=True)
 
@@ -54,7 +65,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="UNet_Drive/best.ckpt",
+        default="best.ckpt",
         type=str,
         help="path to ckpt file to evaluate",
     )

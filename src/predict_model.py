@@ -11,17 +11,9 @@ def predict(model_src):
     if not os.path.isfile(model_src):
         model_src = os.path.join("models", model_src)
     print(model_src)
-    try:
-        model = Model.load_from_checkpoint(checkpoint_path=model_src, 
-                                           target_mask_supplied=True,
-                                            #loss="focal"
-        )
-    except:
-        model = Model.load_from_checkpoint(
-            checkpoint_path=model_src, 
-            target_mask_supplied=True,
-            #loss="focal"
-        )
+    
+    model = Model.load_from_checkpoint(checkpoint_path=model_src)
+
     model.to("cuda")
 
     trainloader, valloader, testloader = get_dataloaders_DRIVE(batch_size=1, data_path="data/DRIVE/training")
@@ -58,7 +50,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="UNet_Drive/best.ckpt",
+        default="best.ckpt",
         type=str,
         help="path to ckpt file to evaluate",
     )
