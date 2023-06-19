@@ -2,8 +2,8 @@ import argparse
 import pytorch_lightning as pl
 import torch
 import os
-from src.load_data import get_dataloaders_DRIVE
-from src.load_data import get_dataloaders_PH2
+from src.load_data import get_dataloaders_proposals
+from src.load_data import get_dataloaders_WASTE
 from src.model import Model, DilatedNet
 
 

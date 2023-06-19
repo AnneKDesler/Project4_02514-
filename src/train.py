@@ -28,7 +28,8 @@ def train(config=None, checkpoint_callbacks=None):
         wandb.watch(model, log=None, log_freq=1)
         logger = pl.loggers.WandbLogger(project="project4_02514", entity="chrillebon")
 
-        trainloader, valloader,_ = get_dataloaders_proposals(batch_size=batch_size)
+        path = "/u/data/s194333/DLCV/Project4_02514-/data"
+        trainloader, valloader,_ = get_dataloaders_proposals(batch_size=batch_size, num_workers=8, data_path=path, proposal_path = 'region_proposals6')
 
         # make sure no models are saved if no checkpoints are given
         if checkpoint_callbacks is None:
@@ -55,7 +56,7 @@ def train(config=None, checkpoint_callbacks=None):
         print("Done!")
 
 if __name__ == "__main__":
-    checkpoint_callback = ModelCheckpoint(dirpath="models", filename="best")
+    checkpoint_callback = ModelCheckpoint(dirpath="models/lr0.0001wd0.001", filename="best")
     train(
         config="src/config/default_params.yaml",
         checkpoint_callbacks=[checkpoint_callback],

@@ -50,7 +50,8 @@ class Model(pl.LightningModule):
         """
         From https://huggingface.co/docs/transformers/model_doc/t5#training
         """
-        img, target, prop, rect = batch
+        #img, target, prop, rect, img_id = batch
+        prop, rect, img_id = batch
         output = self(prop)
         target_class = rect[:, 4].long()
         return self.loss(output, target_class)

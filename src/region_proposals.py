@@ -14,7 +14,7 @@ def SS(img, size=128):
     :return: img_lbl: image with labels
              regions: regions of the image
     """
-    img_lbl, regions = selectivesearch.selective_search(img)#, scale=500, sigma=0.9, min_size=10)
+    img_lbl, regions = selectivesearch.selective_search(img, scale=500, sigma=0.9, min_size=10)
     # crop regions out of the image and resize and append to rps
     # regions [x, y, w, h] upper left corner and width and height
     # changed to center x, center y, width, height
@@ -29,7 +29,7 @@ def SS(img, size=128):
 if __name__ == "__main__":
     path = "/u/data/s194333/DLCV/Project4_02514-/data"
     train_loader, val_loader, test_loader = get_dataloaders_WASTE(batch_size=1, num_workers=0, seed=42, data_path=path)
-    img, target, img_id = next(iter(test_loader))
+    img, target, img_id = next(iter(train_loader))
     img = img.squeeze(0).permute(1,2,0).numpy()
     # save image
     fig,ax = plt.subplots(1)
@@ -44,19 +44,24 @@ if __name__ == "__main__":
     size = 128
 
     rps = []
+    fig, ax = plt.subplots(1)
+    plt.axis('off')
+    ax.imshow(img)
     for r in regions:
         x, y, w, h = r['rect']
         if w <= 1 or h <= 1:
             continue
         #print(x, y, w, h)
+        rect = plt.Rectangle((x-w//2, y-h//2), w, h, fill=False, edgecolor='red', linewidth=1)
+        ax.add_patch(rect)
         crop = img[y-h//2:y+h//2, x-w//2:x+w//2,:].astype(np.float32)
         crop = dataAug.Resize((size, size),False)(np.copy(crop))
         rps.append(crop)
+    fig.savefig('regions.png', bbox_inches='tight', pad_inches=0)
     
     # save the first 10 regions
     for i, rp in enumerate(rps[:10]):
 
-        cv2.imwrite(f"region_proposals{i}.jpg", rp)
         fig,ax = plt.subplots(1)
         plt.axis('off')
         ax.imshow(rp)
