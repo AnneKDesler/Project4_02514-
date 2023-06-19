@@ -81,7 +81,7 @@ class Resize(object):
         self.h_target, self.w_target = target_shape
         self.correct_box = correct_box
 
-    def __call__(self, img, bboxes):
+    def __call__(self, img, bboxes=None, padding=False):
         h_org , w_org , _= img.shape
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
@@ -90,12 +90,14 @@ class Resize(object):
         resize_w = int(resize_ratio * w_org)
         resize_h = int(resize_ratio * h_org)
         image_resized = cv2.resize(img, (resize_w, resize_h))
-
-        image_paded = np.full((self.h_target, self.w_target, 3), 128.0)
-        dw = int((self.w_target - resize_w) / 2)
-        dh = int((self.h_target - resize_h) / 2)
-        image_paded[dh:resize_h + dh, dw:resize_w + dw, :] = image_resized
-        image = image_paded / 255.0  # normalize to [0, 1]
+        if padding:
+            image_paded = np.full((self.h_target, self.w_target, 3), 128.0)
+            dw = int((self.w_target - resize_w) / 2)
+            dh = int((self.h_target - resize_h) / 2)
+            image_paded[dh:resize_h + dh, dw:resize_w + dw, :] = image_resized
+            image = image_paded # / 255.0  # normalize to [0, 1]
+        else:
+            image = image_resized #/255.0
         # change channels to RGB
         image = image[:, :, (2, 1, 0)]
 
@@ -105,10 +107,16 @@ class Resize(object):
             y_min = bboxes[:, 1]
             x_max = x_min + bboxes[:, 2]
             y_max = y_min + bboxes[:, 3]
-            bboxes[:, 0] = x_min * resize_ratio + dw
-            bboxes[:, 1] = y_min * resize_ratio + dh
-            bboxes[:, 2] = (x_max * resize_ratio + dw)-x_min
-            bboxes[:, 3] = (y_max * resize_ratio + dh)-y_min
+            if padding:
+                bboxes[:, 0] = x_min * resize_ratio + dw
+                bboxes[:, 1] = y_min * resize_ratio + dh
+                bboxes[:, 2] = (x_max * resize_ratio + dw)-x_min
+                bboxes[:, 3] = (y_max * resize_ratio + dh)-y_min
+            else:
+                bboxes[:, 0] = x_min * resize_ratio
+                bboxes[:, 1] = y_min * resize_ratio
+                bboxes[:, 2] = (x_max * resize_ratio)-x_min
+                bboxes[:, 3] = (y_max * resize_ratio)-y_min
 
             return image, bboxes
         return image

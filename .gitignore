@@ -7,3 +7,6 @@ lightning_logs/
 *.cpython-310.pyc
 
 models/
+region_proposals/
+region_proposals2/
+region_proposals3/
