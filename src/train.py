@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 import wandb
 from pytorch_lightning.callbacks import ModelCheckpoint
-from src.load_data import get_dataloaders_WASTE
+from src.load_data import get_dataloaders_WASTE, get_dataloaders_proposals
 from src.model import Model
 
 def train(config=None, checkpoint_callbacks=None):
@@ -16,21 +16,19 @@ def train(config=None, checkpoint_callbacks=None):
         weight_decay = wandb.config.weight_decay
         epochs = wandb.config.epochs
         batch_size = wandb.config.batch_size
-        optimizer = wandb.config.optimizer
 
         device = 0
         
         model = Model(
             lr=lr,
             weight_decay=weight_decay,
-            batch_size=batch_size,
-            optimizer=optimizer,
+            batch_size=batch_size
         )
 
         wandb.watch(model, log=None, log_freq=1)
         logger = pl.loggers.WandbLogger(project="project4_02514", entity="chrillebon")
 
-        trainloader, valloader,_ = get_dataloaders_WASTE(batch_size=batch_size)
+        trainloader, valloader,_ = get_dataloaders_proposals(batch_size=batch_size)
 
         # make sure no models are saved if no checkpoints are given
         if checkpoint_callbacks is None:

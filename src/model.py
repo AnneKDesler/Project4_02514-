@@ -50,9 +50,10 @@ class Model(pl.LightningModule):
         """
         From https://huggingface.co/docs/transformers/model_doc/t5#training
         """
-        data, target = batch
-        output = self(data)
-        return self.loss(output, target)
+        img, target, prop, rect = batch
+        output = self(prop)
+        target_class = rect[:, 4].long()
+        return self.loss(output, target_class)
 
     def training_step(
         self, batch: List[str], batch_idx: Optional[int] = None
