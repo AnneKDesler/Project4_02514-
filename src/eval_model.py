@@ -59,8 +59,8 @@ def eval(predicts_file):
         already_found = np.zeros(len_gts)
         already_found_binary = np.zeros(len_gts)
         # for mAP sort pred after confidence score
-        mAP_xaxis = [[] for _ in range(28)]
-        mAP_yaxis = [[] for _ in range(28)]
+        AP_xaxis = [[] for _ in range(28)]
+        AP_yaxis = [[] for _ in range(28)]
         tp_mAP = np.zeros(28)
         c_pred = np.zeros(28)
         no_in_class = np.zeros(28)
@@ -86,27 +86,26 @@ def eval(predicts_file):
             if already_found_binary[i] == 0:
                 fp_binary += 1
             if no_in_class[pred_class] != 0:
-                mAP_xaxis[pred_class].append(tp_mAP[pred_class]/(c_pred[pred_class]+1))
-                mAP_yaxis[pred_class].append(tp_mAP[pred_class]/(no_in_class[pred_class]+1))
+                AP_xaxis[pred_class].append(tp_mAP[pred_class]/(c_pred[pred_class]+1))
+                AP_yaxis[pred_class].append(tp_mAP[pred_class]/(no_in_class[pred_class]+1))
 
         fn += len_gts - already_found.sum()
         fn_binary += len_gts - already_found_binary.sum()
-        mAP_image = 0
+        AP_image = 0
         active_classes = 0
         for i in range(28):
-            if no_in_class[i] != 0:
+            if AP_xaxis[i] != []:
                 active_classes += 1
                 # Remove non-unique Recall observations
-                mAP_xaxis[i],indices = np.unique(mAP_xaxis[i],return_index=True)
+                AP_xaxis[i],indices = np.unique(AP_xaxis[i],return_index=True)
                 tmp = []
                 for j in indices:
-                    tmp.append(mAP_yaxis[i][j])
-                mAP_yaxis[i] = tmp
+                    tmp.append(AP_yaxis[i][j])
+                AP_yaxis[i] = tmp
+                AP_image += np.mean(AP_yaxis[i])
 
-                mAP_image += np.mean(mAP_yaxis[i])
-
-        mAP_image /= active_classes
-        mAP += mAP_image
+        AP_image /= active_classes
+        mAP += AP_image
 
     # after we went through images
     dice = 2*tp/(2*tp+fp+fn)
