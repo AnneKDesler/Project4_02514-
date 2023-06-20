@@ -94,7 +94,7 @@ def eval(predicts_file):
         AP_image = 0
         active_classes = 0
         for i in range(28):
-            if AP_xaxis[i] != []:
+            if len(AP_xaxis[i])>0:
                 active_classes += 1
                 # Remove non-unique Recall observations
                 AP_xaxis[i],indices = np.unique(AP_xaxis[i],return_index=True)
@@ -103,14 +103,23 @@ def eval(predicts_file):
                     tmp.append(AP_yaxis[i][j])
                 AP_yaxis[i] = tmp
                 AP_image += np.mean(AP_yaxis[i])
-
-        AP_image /= active_classes
+        
+        if active_classes > 0:
+            AP_image /= active_classes
         mAP += AP_image
 
     # after we went through images
+    precision = tp/(tp+fp)
+    recall = tp/(tp+fn)
+    precision_binary = tp_binary/(tp_binary+fp_binary)
+    recall_binary = tp_binary/(tp_binary+fn_binary)
     dice = 2*tp/(2*tp+fp+fn)
     dice_binary = 2*tp_binary/(2*tp_binary+fp_binary+fn_binary)
     mAP /= no_of_images
+    print("Precision: ", precision)
+    print("Recall: ", recall)
+    print("Precision binary: ", precision_binary)
+    print("Recall binary: ", recall_binary)
     print("Dice score: ", dice)
     print("Dice score binary: ", dice_binary)
     print("mAP: ", mAP)
