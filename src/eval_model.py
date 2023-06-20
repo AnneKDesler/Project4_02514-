@@ -61,7 +61,9 @@ def eval(predicts_file):
         # for mAP sort pred after confidence score
         AP_xaxis = [[] for _ in range(28)]
         AP_yaxis = [[] for _ in range(28)]
-        tp_mAP = np.zeros(28)
+        AP_xaxis_binary = 0
+        AP_yaxis_binary = 0
+        tp_AP = np.zeros(28)
         c_pred = np.zeros(28)
         no_in_class = np.zeros(28)
         for gt in gt_boxes:
@@ -79,15 +81,16 @@ def eval(predicts_file):
                             already_found_binary[i] = 1
                         if pred_class == gt[4]:
                             tp += 1
-                            tp_mAP[pred_class] += 1
+                            tp_AP[pred_class] += 1
                             already_found[i] = 1
             if already_found[i] == 0:
                 fp += 1
             if already_found_binary[i] == 0:
                 fp_binary += 1
             if no_in_class[pred_class] != 0:
-                AP_xaxis[pred_class].append(tp_mAP[pred_class]/(c_pred[pred_class]+1))
-                AP_yaxis[pred_class].append(tp_mAP[pred_class]/(no_in_class[pred_class]+1))
+                AP_xaxis[pred_class].append(tp_AP[pred_class]/c_pred[pred_class])
+                AP_yaxis[pred_class].append(tp_AP[pred_class]/(no_in_class[pred_class]+1))
+            AP_yaxis_binary.append(tp_binary/no_in_class.sum())
 
         fn += len_gts - already_found.sum()
         fn_binary += len_gts - already_found_binary.sum()
@@ -107,6 +110,7 @@ def eval(predicts_file):
         if active_classes > 0:
             AP_image /= active_classes
         mAP += AP_image
+        mAP_binary += np.mean(AP_yaxis_binary)
 
     # after we went through images
     precision = tp/(tp+fp)
@@ -116,6 +120,7 @@ def eval(predicts_file):
     dice = 2*tp/(2*tp+fp+fn)
     dice_binary = 2*tp_binary/(2*tp_binary+fp_binary+fn_binary)
     mAP /= no_of_images
+    mAP_binary /= no_of_images
     print("Precision: ", precision)
     print("Recall: ", recall)
     print("Precision binary: ", precision_binary)
@@ -123,6 +128,7 @@ def eval(predicts_file):
     print("Dice score: ", dice)
     print("Dice score binary: ", dice_binary)
     print("mAP: ", mAP)
+    print("mAP binary: ", mAP_binary)
 
 
 
