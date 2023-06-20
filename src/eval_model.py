@@ -22,7 +22,7 @@ def eval(predicts_file):
     # If iou > 0.7 but different classes, fp += 1. Or maybe just predicted wrong class?
 
     # load dictionary from predicts file
-    with open('dictionary.txt') as f:
+    with open(predicts_file) as f:
         data = f.read()
     predicts = json.loads(data)
 
@@ -34,68 +34,74 @@ def eval(predicts_file):
     fn_binary = 0
     mAP = 0
     mAP_binary = 0
-    # for each image
-    len_gts = len(gts)
-    already_found = np.zeros(len_gts)
-    already_found_binary = np.zeros(len_gts)
-    # for mAP sort pred after confidence score
-    mAP_xaxis = [[] for _ in range(28)]
-    mAP_yaxis = [[] for _ in range(28)]
-    tp_mAP = np.zeros(len_gts)
-    c_pred = np.zeros(len_gts)
-    no_in_class = np.zeros(len_gts)
+    no_of_images = len(predicts.keys())
+    for img_id in predicts.keys():
+        # for each image
 
-    pred_boxes = predicts[img_id]['pred_bboxes']
-    gt_boxes = predicts[img_id]['gt_bboxes']
-    for gt in gt_boxes:
-        no_in_class[gt[5]] += 1
-    for pred in pred_boxes:
-        pred_class = pred[5]
-        c_pred[pred_class] += 1
-        for i in range (len_gts):
-            if not already_found[i]:
-                gt = gts[i]
-                iou = bbox_iou(gt[:3],pred[:3])
-                if iou > 0.5:
-                    if not already_found_binary[i]:
-                        tp_binary += 1
-                        already_found_binary[i] = 1
-                    if pred_class == gt[5]:
-                        tp += 1
-                        tp_mAP[pred_class] += 1
-                        already_found[i] = 1
-        if already_found[i] == 0:
-            fp += 1
-        if already_found_binary[i] == 0:
-            fp_binary += 1
-        if no_in_class[pred_class] != 0:
-            mAP_xaxis[pred_class].append(tp_mAP[pred_class]/c_pred[pred_class])
-            mAP_yaxis[pred_class].append(tp[pred_class]/no_in_class[pred_class])
+        pred_boxes = predicts[img_id]['pred_bboxes']
+        gt_boxes = predicts[img_id]['gt_bboxes']
 
-    fn += len_gts - already_found.sum()
-    fn_binary += len_gts - already_found_binary.sum()
+        len_gts = len(gt_boxes)
+        already_found = np.zeros(len_gts)
+        already_found_binary = np.zeros(len_gts)
+        # for mAP sort pred after confidence score
+        mAP_xaxis = [[] for _ in range(28)]
+        mAP_yaxis = [[] for _ in range(28)]
+        tp_mAP = np.zeros(len_gts)
+        c_pred = np.zeros(len_gts)
+        no_in_class = np.zeros(len_gts)
+        for gt in gt_boxes:
+            no_in_class[gt[5]] += 1
+        for pred in pred_boxes:
+            pred_class = pred[5]
+            c_pred[pred_class] += 1
+            for i in range (len_gts):
+                if not already_found[i]:
+                    gt = gt_boxes[i]
+                    iou = bbox_iou(gt[:4],pred[:4])
+                    if iou > 0.5:
+                        if not already_found_binary[i]:
+                            tp_binary += 1
+                            already_found_binary[i] = 1
+                        if pred_class == gt[5]:
+                            tp += 1
+                            tp_mAP[pred_class] += 1
+                            already_found[i] = 1
+            if already_found[i] == 0:
+                fp += 1
+            if already_found_binary[i] == 0:
+                fp_binary += 1
+            if no_in_class[pred_class] != 0:
+                mAP_xaxis[pred_class].append(tp_mAP[pred_class]/c_pred[pred_class])
+                mAP_yaxis[pred_class].append(tp[pred_class]/no_in_class[pred_class])
 
-    mAP_image = 0
-    active_classes = 0
-    for i in range(28):
-        if no_in_class != 0:
-            active_classes += 1
-            # Remove non-unique Recall observations
-            mAP_xaxis[i],indices = np.unique(mAP_xaxis[i],return_index=True)
-            tmp = []
-            for j in indices:
-                tmp.append(mAP_yaxis[i][j])
-            mAP_yaxis[i] = tmp
+        fn += len_gts - already_found.sum()
+        fn_binary += len_gts - already_found_binary.sum()
 
-            mAP_image += np.mean(mAP_yaxis[i])
-    mAP_image /= active_classes
-    mAP += mAP_image
+        mAP_image = 0
+        active_classes = 0
+        for i in range(28):
+            if no_in_class != 0:
+                active_classes += 1
+                # Remove non-unique Recall observations
+                mAP_xaxis[i],indices = np.unique(mAP_xaxis[i],return_index=True)
+                tmp = []
+                for j in indices:
+                    tmp.append(mAP_yaxis[i][j])
+                mAP_yaxis[i] = tmp
+
+                mAP_image += np.mean(mAP_yaxis[i])
+        mAP_image /= active_classes
+        mAP += mAP_image
 
     # after we went through images
     dice = 2*tp/(2*tp+fp+fn)
     dice_binary = 2*tp_binary/(2*tp_binary+fp_binary+fn_binary)
-
     mAP /= no_of_images
+    print("Dice score: ", dice)
+    print("Dice score binary: ", dice_binary)
+    print("mAP: ", mAP)
+
 
 
 
@@ -105,7 +111,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="best.ckpt",
+        default="outputs_nms/predicts.txt",
         type=str,
         help="path to ckpt file to evaluate",
     )
