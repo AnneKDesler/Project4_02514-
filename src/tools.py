@@ -147,20 +147,20 @@ def iou_xywh_torch(boxes1, boxes2):
     return IOU
 
 
-def nms(bboxes, score_threshold, iou_threshold, sigma=0.3, method='nms'):
+def nms(bboxes, score_threshold, iou_threshold):
 
     classes_in_img = list(set(bboxes[:, 5].astype(np.int32)))
     best_bboxes = []
 
     for cls in classes_in_img:
-        cls_mask = (bboxes[:, 5].astype(np.int32) == cls)
+        cls_mask = (bboxes[:,5].astype(np.int32) == cls)
         cls_bboxes = bboxes[cls_mask]
         while len(cls_bboxes) > 0:
             max_ind = np.argmax(cls_bboxes[:, 4])
             best_bbox = cls_bboxes[max_ind]
             best_bboxes.append(best_bbox)
             cls_bboxes = np.concatenate([cls_bboxes[: max_ind], cls_bboxes[max_ind + 1:]])
-            iou = iou_xyxy_numpy(best_bbox[np.newaxis, :4], cls_bboxes[:, :4])
+            iou = iou_xywh_numpy(best_bbox[np.newaxis, :4], cls_bboxes[:, :4])
 
             weight = np.ones((len(iou),), dtype=np.float32)
             iou_mask = iou > iou_threshold
