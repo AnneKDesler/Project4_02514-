@@ -8,6 +8,7 @@ from src.model import Model
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from src.load_data import WASTE2
+from src.tools import bbox_iou
 
 
 def eval(model_src):
@@ -24,7 +25,9 @@ def eval(model_src):
 
     model.to("cuda")
 
-    predictions = dict()
+    tp = 0
+    fp = 0
+    fn = 0
 
     for prop, rect, img_id in testloader:
         img, target, _= dataset.__getitem__(img_id.item())
@@ -49,7 +52,7 @@ def eval(model_src):
                 plt.text(box[0]+box[2]/2,box[1]-box[3]/2,str(label),color='r')
             
             box = rect[0] 
-            gt = Rectangle((box[0]-box[2]/2,box[1]-box[3]/2),box[2],box[3],linewidth=1,edgecolor='b',facecolor='none')
+            preddddd = Rectangle((box[0]-box[2]/2,box[1]-box[3]/2),box[2],box[3],linewidth=1,edgecolor='b',facecolor='none')
             ax.add_patch(gt)
             # get keyword argument from super category id
             #if pred != 28:
@@ -67,6 +70,58 @@ def eval(model_src):
             ax.imshow(prop.squeeze(0).permute(1,2,0))
             fig.savefig('outputs/' +str(img_id.item())+'_prop.png', bbox_inches='tight', pad_inches=0)
 
+
+# Metrics
+
+# Same classes
+# Every ground truth should have one proposal. If so, tp +=1.
+# If no proposal matches with iou > 0.7, then fn += 1. But what if other gt with same class matches this one?
+
+# Different classes
+# If iou > 0.7 but different classes, fp += 1. Or maybe just predicted wrong class?
+import numpy as np
+
+tp = 0
+fp = 0
+fn = 0
+tp_binary = 0
+fp_binary = 0
+fn_binary = 0
+mAP = 0
+mAP_binary = 0
+# for each image
+len_gts = len(gts)
+already_found = np.zeros(len_gts)
+already_found_binary = np.zeros(len_gts)
+mAP_xaxis = [[] for _ in range(28)]
+mAP_yaxis = [[] for _ in range(28)]
+c_pred = 0
+# for mAP sort pred after confidence score
+for pred in preds:
+    c_pred += 1
+    for i in range (len_gts):
+        if not already_found[i]:
+            gt = gts[i]
+            iou = bbox_iou(gt,pred)
+            if iou > 0.5:
+                if not already_found_binary[i]:
+                    tp_binary += 1
+                    already_found_binary[i] = 1
+                if pred.class == gt.class:
+                    tp += 1
+                    already_found[i] = 1
+    if already_found[i] == 0:
+        fp += 1
+    if already_found_binary[i] == 0:
+        fp_binary += 1
+    mAP_xaxis[pred.class].append(tp/c_pred)
+    mAP_yaxis[pred.class].append(tp/len_gts)
+
+fn += len_gts - already_found.sum()
+fn_binary += len_gts - already_found_binary.sum()
+# after we went through images
+dice = 2*tp/(2*tp+fp+fn)
+dice_binary = 2*tp_binary/(2*tp_binary+fp_binary+fn_binary)
 
 
 if __name__ == "__main__":
