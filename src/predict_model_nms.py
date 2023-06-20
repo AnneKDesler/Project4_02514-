@@ -9,6 +9,7 @@ from src.load_data import WASTE2
 from src.load_data import get_dataloaders_proposals
 import numpy as np
 from tools import nms
+import json
 
 def predict(model_src):
     if not os.path.isfile(model_src):
@@ -31,15 +32,16 @@ def predict(model_src):
         i += 1
         if img_id.item() != prev_img_id:
             img, target, _= dataset.__getitem__(img_id.item())
-            predicts[str(img_id.item())] = dict()
-            predicts[str(img_id.item())]['gt_bboxes'] = []
-            predicts[str(img_id.item())]['pred_bboxes'] = []
+            id = "{id}".format(id = img_id.item())
+            predicts[id] = dict()
+            predicts[id]["gt_bboxes"] = []
+            predicts[id]["pred_bboxes"] = []
             fig,ax = plt.subplots(1)
             plt.axis('off')
             ax.imshow(img)#.squeeze(0))#.permute(1,2,0))
             for box in target:
                 box = box.tolist()
-                predicts[str(img_id.item())]['gt_bboxes'].append(box)
+                predicts[id]["gt_bboxes"].append(box)
             
             
         prev_img_id = img_id.item()
@@ -58,11 +60,11 @@ def predict(model_src):
 
             box.append(output[0,pred2].item())
             box.append(pred2.item())
-            predicts[str(img_id.item())]['pred_bboxes'].append(box)
+            predicts[id]["pred_bboxes"].append(box)
     
     # save predicts to file
     with open('outputs_nms/predicts.txt', 'w') as f:
-        f.write(str(predicts))
+        json.dump(predicts, f)
     
 
         
@@ -71,15 +73,16 @@ def predict(model_src):
         fig,ax = plt.subplots(1)
         plt.axis('off')
         img, _, _ = dataset.__getitem__(int(img_id))
+        id = "{id}".format(id = int(img_id))
         ax.imshow(img)
-        for box in predicts[img_id]['gt_bboxes']:
+        for box in predicts[id]["gt_bboxes"]:
             gt = Rectangle((box[0]-box[2]/2,box[1]-box[3]/2),box[2],box[3],linewidth=1,edgecolor='r',facecolor='none')
             ax.add_patch(gt)
             # get keyword argument from super category id
             label = list(cats.keys())[list(cats.values()).index(box[4])]
             plt.text(box[0]+box[2]/2,box[1]-box[3]/2,str(label),color='r')
         
-        pred_boxes = predicts[img_id]['pred_bboxes']
+        pred_boxes = predicts[id]["pred_bboxes"]
         pred_boxes = np.array(pred_boxes)
         if pred_boxes.shape[0] == 0:
             continue
