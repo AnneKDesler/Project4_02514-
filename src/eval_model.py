@@ -64,6 +64,7 @@ def eval(predicts_file):
         AP_xaxis_binary = 0
         AP_yaxis_binary = 0
         tp_AP = np.zeros(28)
+        tp_AP_binary = 0
         c_pred = np.zeros(28)
         no_in_class = np.zeros(28)
         for gt in gt_boxes:
@@ -78,6 +79,7 @@ def eval(predicts_file):
                     if iou > 0.5:
                         if not already_found_binary[i]:
                             tp_binary += 1
+                            tp_AP_binary += 1
                             already_found_binary[i] = 1
                         if pred_class == gt[4]:
                             tp += 1
@@ -89,8 +91,10 @@ def eval(predicts_file):
                 fp_binary += 1
             if no_in_class[pred_class] != 0:
                 AP_xaxis[pred_class].append(tp_AP[pred_class]/c_pred[pred_class])
-                AP_yaxis[pred_class].append(tp_AP[pred_class]/(no_in_class[pred_class]+1))
-            AP_yaxis_binary.append(tp_binary/no_in_class.sum())
+                AP_yaxis[pred_class].append(tp_AP[pred_class]/(no_in_class[pred_class]))
+            AP_yaxis_binary += tp_AP_binary/len_gts
+            if tp_AP_binary/len_gts > 1:
+                print('tp_binary:' , tp_AP_binary, 'len_gts:', len_gts)
 
         fn += len_gts - already_found.sum()
         fn_binary += len_gts - already_found_binary.sum()
@@ -110,7 +114,7 @@ def eval(predicts_file):
         if active_classes > 0:
             AP_image /= active_classes
         mAP += AP_image
-        mAP_binary += np.mean(AP_yaxis_binary)
+        mAP_binary += AP_yaxis_binary
 
     # after we went through images
     precision = tp/(tp+fp)
@@ -119,6 +123,8 @@ def eval(predicts_file):
     recall_binary = tp_binary/(tp_binary+fn_binary)
     dice = 2*tp/(2*tp+fp+fn)
     dice_binary = 2*tp_binary/(2*tp_binary+fp_binary+fn_binary)
+    print('mAP: ', mAP, 'mAP_binary: ', mAP_binary, 'no_of_images: ', no_of_images)
+
     mAP /= no_of_images
     mAP_binary /= no_of_images
     print("Precision: ", precision)
@@ -139,7 +145,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="outputs_nms/predicts.txt",
+        default="outputs_nms/predicts_all.txt",
         type=str,
         help="path to ckpt file to evaluate",
     )
