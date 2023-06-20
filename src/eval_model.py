@@ -61,8 +61,8 @@ def eval(predicts_file):
         # for mAP sort pred after confidence score
         AP_xaxis = [[] for _ in range(28)]
         AP_yaxis = [[] for _ in range(28)]
-        AP_xaxis_binary = 0
-        AP_yaxis_binary = 0
+        AP_xaxis_binary = []
+        AP_yaxis_binary = []
         tp_AP = np.zeros(28)
         tp_AP_binary = 0
         c_pred = np.zeros(28)
@@ -92,12 +92,13 @@ def eval(predicts_file):
             if no_in_class[pred_class] != 0:
                 AP_xaxis[pred_class].append(tp_AP[pred_class]/c_pred[pred_class])
                 AP_yaxis[pred_class].append(tp_AP[pred_class]/(no_in_class[pred_class]))
-            AP_yaxis_binary += tp_AP_binary/len_gts
-            if tp_AP_binary/len_gts > 1:
-                print('tp_binary:' , tp_AP_binary, 'len_gts:', len_gts)
+
+            AP_xaxis_binary.append(tp_AP_binary/c_pred.sum())
+            AP_yaxis_binary.append(tp_AP_binary/len_gts)
 
         fn += len_gts - already_found.sum()
         fn_binary += len_gts - already_found_binary.sum()
+        
         AP_image = 0
         active_classes = 0
         for i in range(28):
@@ -114,7 +115,19 @@ def eval(predicts_file):
         if active_classes > 0:
             AP_image /= active_classes
         mAP += AP_image
-        mAP_binary += AP_yaxis_binary
+
+        AP_image_binary = 0
+        active_classes = 0
+        if len(AP_xaxis_binary)>0:
+                active_classes += 1
+                # Remove non-unique Recall observations
+                AP_xaxis_binary,indices = np.unique(AP_xaxis_binary,return_index=True)
+                tmp = []
+                for j in indices:
+                    tmp.append(AP_yaxis_binary[j])
+                AP_yaxis_binary = tmp
+                AP_image_binary += np.mean(AP_yaxis_binary)
+        mAP_binary += AP_image_binary
 
     # after we went through images
     precision = tp/(tp+fp)
