@@ -26,6 +26,7 @@ def predict(model_src):
     model.to("cuda")
     
     predicts = dict()
+    predicts_all = dict()
     prev_img_id = -1
     i = 0
     for prop, rect, img_id in testloader:
@@ -36,12 +37,16 @@ def predict(model_src):
             predicts[id] = dict()
             predicts[id]["gt_bboxes"] = []
             predicts[id]["pred_bboxes"] = []
+            predicts_all[id] = dict()
+            predicts_all[id]["gt_bboxes"] = []
+            predicts_all[id]["pred_bboxes"] = []
             fig,ax = plt.subplots(1)
             plt.axis('off')
             ax.imshow(img)#.squeeze(0))#.permute(1,2,0))
             for box in target:
                 box = box.tolist()
                 predicts[id]["gt_bboxes"].append(box)
+                predicts_all[id]["gt_bboxes"].append(box)
             
             
         prev_img_id = img_id.item()
@@ -54,6 +59,10 @@ def predict(model_src):
 
         pred = torch.argmax(output.squeeze(0), dim=0)
         pred2 = torch.argmax(output.squeeze(0)[:-1], dim=0)
+        box = rect[0][:4].tolist()
+        box.append(output[0,pred2].item())
+        box.append(pred2.item())
+        predicts_all[id]["pred_bboxes"].append(box)
         print(output[0,pred], output[0,pred2])
         if pred != 28 or output[0,pred2] >= 0.3:
             box = rect[0][:4].tolist()
@@ -65,6 +74,8 @@ def predict(model_src):
     # save predicts to file
     with open('outputs_nms/predicts.txt', 'w') as f:
         json.dump(predicts, f)
+    with open('outputs_nms/predicts_all.txt', 'w') as f:
+        json.dump(predicts_all, f)
     
 
         
