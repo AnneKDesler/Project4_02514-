@@ -4,61 +4,69 @@ import torch
 import os
 from src.load_data import get_dataloaders_proposals
 from src.load_data import get_dataloaders_WASTE
-from src.model import Model, DilatedNet
+from src.model import Model
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from src.load_data import WASTE2
 
 
 def eval(model_src):
     if not os.path.isfile(model_src):
-        model_src = os.path.join("models", model_src)
+        model_src = os.path.join("models/lr0.0001", model_src)
 
     model = Model.load_from_checkpoint(checkpoint_path=model_src)
 
-    #trainloader, valloader, testloader = get_dataloaders_DRIVE(batch_size=8, data_path="data/DRIVE/training")
-    _, _, testloader = get_dataloaders_proposals(batch_size=1, data_path="data", proposal_path="region_proposals")
+    path = "/u/data/s194333/DLCV/Project4_02514-/data"
+    dataset = WASTE2(data_path=path)
+    cats = dataset.super_cat_ids
+
+    trainloader, valloader, testloader = get_dataloaders_proposals(batch_size=1, data_path="data", proposal_path="region_proposals5")
 
     model.to("cuda")
 
     predictions = dict()
 
-    for img, target, prop, rect in testloader:
+    for prop, rect, img_id in testloader:
+        img, target, _= dataset.__getitem__(img_id.item())
+
         output = model(prop.to("cuda"))
-        output = torch.softmax(output)
-        output = output.detach().cpu().numpy()
-        output = output.squeeze()
-        pred = out.argmax(axis=0)
-        img_id = rect[5]
-        if img_id not in predictions:
-            predictions[str(img_id)] = dict()
-            predictions[str(img_id)]["pred"] = [rect.append(pred)]
-        else:
-            predictions[str(img_id)]["pred"].append(rect.append(pred))
+        #output = torch.softmax(output, dim=1)
 
+        output = torch.sigmoid(output)
 
+        pred = torch.argmax(output.squeeze(0), dim=0)
+        pred2 = torch.argmax(output.squeeze(0)[:-1], dim=0)
+        print(output[0,pred], output[0,pred2])
+        if pred != 28 or output[0,pred2] >= 0.3:
+            fig,ax = plt.subplots(1)
+            plt.axis('off')
+            ax.imshow(img)#.squeeze(0))#.permute(1,2,0))
+            for box in target:
+                gt = Rectangle((box[0]-box[2]/2,box[1]-box[3]/2),box[2],box[3],linewidth=1,edgecolor='r',facecolor='none')
+                ax.add_patch(gt)
+                # get keyword argument from super category id
+                label = list(cats.keys())[list(cats.values()).index(box[4].item())]
+                plt.text(box[0]+box[2]/2,box[1]-box[3]/2,str(label),color='r')
+            
+            box = rect[0] 
+            gt = Rectangle((box[0]-box[2]/2,box[1]-box[3]/2),box[2],box[3],linewidth=1,edgecolor='b',facecolor='none')
+            ax.add_patch(gt)
+            # get keyword argument from super category id
+            #if pred != 28:
+            #    label = list(cats.keys())[list(cats.values()).index(pred2)] 
+            #else:
+            #    label = 'background'
+            label = list(cats.keys())[list(cats.values()).index(pred2)] 
+            label = label + ' ' + str(round(output.squeeze(0)[pred2].item(),2))
+            plt.text(box[0]+box[2]/2,box[1]-box[3]/2,str(label),color='b')
+            
+            fig.savefig('outputs/' +str(img_id.item())+'_output.png', bbox_inches='tight', pad_inches=0)
 
+            fig,ax = plt.subplots(1)
+            plt.axis('off')
+            ax.imshow(prop.squeeze(0).permute(1,2,0))
+            fig.savefig('outputs/' +str(img_id.item())+'_prop.png', bbox_inches='tight', pad_inches=0)
 
-
-        break
-
-    if torch.cuda.is_available():
-        trainer = pl.Trainer(
-            default_root_dir="",
-            accelerator="gpu",
-            devices=[0]
-        )
-    else:
-        trainer = pl.Trainer(default_root_dir="")
-    
-    results = trainer.test(model=model, dataloaders=trainloader, verbose=True)
-
-    print(results)
-
-    results = trainer.test(model=model, dataloaders=valloader, verbose=True)
-
-    print(results)
-
-    results = trainer.test(model=model, dataloaders=testloader, verbose=True)
-
-    print(results)
 
 
 if __name__ == "__main__":
