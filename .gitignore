@@ -15,3 +15,8 @@ region_proposals4 copy/
 region_proposals5/
 region_proposals5 copy/
 region_proposals6/
+outputs/
+outputs_nms/
+outputs_no_nms/
+outputs_old/
+for poster/
