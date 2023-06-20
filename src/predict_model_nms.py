@@ -56,9 +56,14 @@ def predict(model_src):
         if pred != 28 or output[0,pred2] >= 0.3:
             box = rect[0][:4].tolist()
 
-            box.append(output[0,pred2])
-            box.append(pred2)
+            box.append(output[0,pred2].item())
+            box.append(pred2.item())
             predicts[str(img_id.item())]['pred_bboxes'].append(box)
+    
+    # save predicts to file
+    with open('outputs_nms/predicts.txt', 'w') as f:
+        f.write(str(predicts))
+    
 
         
  
@@ -97,7 +102,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="best.ckpt",
+        default="best-v1.ckpt",
         type=str,
         help="path to ckpt file to evaluate",
     )
